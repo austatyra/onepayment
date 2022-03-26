@@ -1,14 +1,14 @@
-const { GraphQLClient } = require("graphql-request");
-import 'regenerator-runtime/runtime';
-console.log('Hello World');
-/*
-//Relpace Client assertion
-const CLIENT_ASSERTION =
-    "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkUzMDZBOTg4NDIwNjZBQkU5QzQ1QjQ0MjIyNTU0NjlFNTMwNEE2RTQifQ.eyJpYXQiOjE2NDc2MjAwMzQsIm5iZiI6MTY0NzYyMDAzNCwiZXhwIjoxNjQ3NjIwMzM0LCJhdWQiOiJodHRwczovL3NlY3VyZS5zdGl0Y2gubW9uZXkvY29ubmVjdC90b2tlbiIsImlzcyI6InRlc3QtMzdkMDlmMTYtZDVmNS00MjI5LThiMTgtMGU5NjE2ZDM3YmM3Iiwic3ViIjoidGVzdC0zN2QwOWYxNi1kNWY1LTQyMjktOGIxOC0wZTk2MTZkMzdiYzciLCJqdGkiOiI1Y2U3NWUyZDQ3MGRkZTQwMmI3MjA1NmNlMWExM2IzYyJ9.jRQMKtzQ1FHxZZ4-1alvq3PNcbNPi_A-TaffSSg02KSXAbn9RCICQyRrOvyo--fEjc8JK25pewuJUQA2jhmLIqaAnaDaGqOTWZQ38-7OI7QmCnIDrJT8jRoKTreA97Yy7XjJZKXpWT5hdD2B_bDiBCmFUV-wbQLCUrxMEktWp4o8-1ZXF1w1NWdx4vnrlAnSqUoI44b5F1dTawxb0utfW5YY00u_A0xwHidre0w7jN8gtphT6Dj2gCJhrTCfyLGx2JeyS0eYo-Vxg6W-Im-d7BHXBKVKOPG77r7hShbxaE530KtYHcTXuzRZ8KtdJDscSiyhcH2h16-oLF8bdjWlgL0pkrqTUJcr7K1hfhvRvS9UKUjWak4QhkJdD01MqtgRtjWd2LXAf26hnqFPfQ8n_WW34ZAmgGJgeoyQ8_q_l1yldjTrAeb0P9NmfFLHGd3r_o6rAyHYoY4CQSHsolwCjV-scCE580IyE9qALFkupn3AVuKdkJ9Y8_hBC2-rqPxVPdXD9kuqh3vvM9fgSA3DZzMuBfXhucS6L1EVb9BYP09KW8UYYnqU-PJUmRPIl5HsuOpB8MnozfFuofARlBFPtBTzK2aMfOwkfr4fkOzX36Vi_BpazG_36KDsjbmES5FOd92iqZEoQyXjldhyojEKkq7NDEibdBT22bjrMNtjX3Y";
-const CLIENT_ID = "test-37d09f16-d5f5-4229-8b18-0e9616d37bc7";
 
+const { GraphQLClient } = require("graphql-request");
+console.log('Hello World');
+import 'regenerator-runtime/runtime';
+const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const crypto = require("crypto"); // used for generating the cryptographically unique JWT id
+const clientId = 'test-37d09f16-d5f5-4229-8b18-0e9616d37bc7';
+//Relpace Client assertion
+const paybutton = document.getElementById('pay-button');
 async function retrieveTokenUsingClientAssertion(
-    clientId,
     clientAssertion,
     scopes
 ) {
@@ -34,86 +34,125 @@ async function retrieveTokenUsingClientAssertion(
     return responseBody.access_token;
 }
 
-//Whenever you need a new token, uncomment section below, it will generate a new token, then check console on the browser to get the token
+function getClientAssertion() {
+    const filename = './certificate.pem';
+    console.log('clientid is :', clientId);
 
+    console.log('Generating private_key_jwt for certificate ', filename);
+   const pemCert = fs.readFileSync(filename,{encoding:'utf8', flag:'r'}).toString('utf8');
+   function getKeyId(cert) {
+    const lines = cert.split('\n').filter(x => x.includes('localKeyID:'))[0];
+    const result = lines.replace('localKeyID:', '').replace(/\W/g, '');
+    return result;
+   }
+   
+    const issuer = clientId;
+    const subject = clientId;
+    const audience = 'https://secure.stitch.money/connect/token';
+    const keyid = getKeyId(pemCert);
+    const jwtid = crypto.randomBytes(16).toString("hex");
+    console.log('jwdid is ',jwtid)
 
-const token = retrieveTokenUsingClientAssertion(
-    CLIENT_ID,
-    CLIENT_ASSERTION,
-    "client_paymentrequest"
-);
+    const options = {
+        keyid,
+        jwtid,
+        notBefore: "0",
+        issuer,
+        subject,
+        audience,
+        expiresIn: "5m", // For this example this value is set to 5 minutes, but for machine usage should generally be a lot shorter 
+        algorithm: "RS256"
+    };
+console.log('options is here', options);
+console.log('pemCert is', pemCert);
+    const clientAssert = jwt.sign({}, pemCert, options);
+    console.log(`Token:\n${clientAssert}`);
+    return clientAssert;
+}
+/*
+function getKeyId(cert) {
+    const lines = cert.split('\n').filter(x => x.includes('localKeyID:'))[0];
+    const result = lines.replace('localKeyID:', '').replace(/\W/g, '');
+    return result;
+}
 */
+paybutton.addEventListener("click", async function () {
+    const CLIENT_ASSERTION = getClientAssertion();
+    //Whenever you need a new token, uncomment section below, it will generate a new token, then check console on the browser to get the token
+    let token = await retrieveTokenUsingClientAssertion(
+        CLIENT_ASSERTION,
+        "client_paymentrequest"
+    );
 
-//Replace with newly generated token
-//const token = "kU2NhCiPQ--TB_0A9tDqweZg-Wf6APjspvtVLjUaN1g";
-
-
-const paybutton = document.getElementById('pay-button');
-paybutton.addEventListener("click", function () {
-    console.log(token);
-    const token = "0fanmeJjUSO1Ub06sTJb0to4mU-pVT1HlsQ0lGsIwoA";
+    console.log("access token =", token);
+    //const token = "0W2pSqV63Od-r29XzbMEAf6ge4daUnr6hswlI4txT0cc";
+    //const token = '3BLcU0KMZ_rMCFhkkRFTCBCz0mXgYnJj7Bv4en5y-44';
+    let authheaders = { authorization: `Bearer ${token}` };
+    console.log(authheaders);
     const graphQLClient = new GraphQLClient("https://api.stitch.money/graphql", {
-        headers: { authorization: `Bearer ${token}` }
+        // headers: { authorization: `Bearer ${token.access_token}` }
+        headers: authheaders
     });
     const createPaymentRequestMutation = `
-    mutation CreatePaymentRequest(
-        $amount: MoneyInput!,
-        $payerReference: String!,
-        $beneficiaryReference: String!,
-        $externalReference: String,
-        $beneficiaryName: String!,
-        $beneficiaryBankId: BankBeneficiaryBankId!,
-        $beneficiaryAccountNumber: String!) {
-      clientPaymentInitiationRequestCreate(input: {
-          amount: $amount,
-          payerReference: $payerReference,
-          beneficiaryReference: $beneficiaryReference,
-          externalReference: $externalReference,
-          beneficiary: {
-              bankAccount: {
-                  name: $beneficiaryName,
-                  bankId: $beneficiaryBankId,
-                  accountNumber: $beneficiaryAccountNumber
-              }
-          }
-        }) {
-        paymentInitiationRequest {
-          id
-          url
-        }
-      }
-    }`;
+     mutation CreatePaymentRequest(
+         $amount: MoneyInput!,
+         $payerReference: String!,
+         $beneficiaryReference: String!,
+         $externalReference: String,
+         $beneficiaryName: String!,
+         $beneficiaryBankId: BankBeneficiaryBankId!,
+         $beneficiaryAccountNumber: String!) {
+       clientPaymentInitiationRequestCreate(input: {
+           amount: $amount,
+           payerReference: $payerReference,
+           beneficiaryReference: $beneficiaryReference,
+           externalReference: $externalReference,
+           beneficiary: {
+               bankAccount: {
+                   name: $beneficiaryName,
+                   bankId: $beneficiaryBankId,
+                   accountNumber: $beneficiaryAccountNumber
+               }
+           }
+         }) {
+         paymentInitiationRequest {
+           id
+           url
+         }
+       }
+     }`;
 
     let urlResponse = ''
-    
-        graphQLClient
-            .request(createPaymentRequestMutation, {
-                amount: {
-                    quantity: 1,
-                    currency: "ZAR"
-                },
-                payerReference: "Joe-Fizz-01",
-                beneficiaryReference: "KombuchaFizz",
-                externalReference: "example-e32e5478-325b-4869-a53e-2021727d2afe",
-                beneficiaryName: "FizzBuzz Co.",
-                beneficiaryBankId: "fnb",
-                beneficiaryAccountNumber: "123456789"
-            })
-            .then((data) => {
-                console.log("THE DATA: ",
-                    data.clientPaymentInitiationRequestCreate.paymentInitiationRequest
-                );
-                
+
+    graphQLClient
+        .request(createPaymentRequestMutation, {
+            amount: {
+                quantity: 10,
+                currency: "ZAR"
+            },
+            payerReference: "Joe-Fizz-01",
+            beneficiaryReference: "KombuchaFizz",
+            externalReference: "example-e32e5478-325b-4869-a53e-2021727d2afe",
+            beneficiaryName: "FizzBuzz Co.",
+            beneficiaryBankId: "fnb",
+            beneficiaryAccountNumber: "123456789"
+        })
+        .then((data) => {
+            console.log("THE DATA: ",
+                data.clientPaymentInitiationRequestCreate.paymentInitiationRequest
+            );
 
 
-    urlResponse = data.clientPaymentInitiationRequestCreate.paymentInitiationRequest;
-    console.log(urlResponse)
-    const url = `${urlResponse.url}?redirect_uri=http%3A%2F%2Flocalhost%3A3000`;
-    window.location.href = url;
+
+            urlResponse = data.clientPaymentInitiationRequestCreate.paymentInitiationRequest;
+            console.log(urlResponse)
+            const url = `${urlResponse.url}?redirect_uri=http%3A%2F%2Flocalhost%3A3000`;
+            window.location.href = url;
 
 
+
+        });
 
 });
 
-});
 
